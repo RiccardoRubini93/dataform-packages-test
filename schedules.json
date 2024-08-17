@@ -8,7 +8,7 @@
     "cron": "30 17 * * *",
     "notifications": [{
       "events": ["failure"],
-      "channels": ["email_jo"]
+      "channels": ["email_rick"]
     }]
   }],
   "notificationChannels": [{
