@@ -1,0 +1,4 @@
+defaultProject: jit-training-dma-devops
+defaultLocation: europe-west12
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
