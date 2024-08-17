@@ -4,4 +4,5 @@ function manage_bool_in_SAP(field) {
      `
 }
 
+
 module.exports = {manage_bool_in_SAP}
