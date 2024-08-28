@@ -90,10 +90,35 @@ function generateColumns(inputSchema) {
     }, {});
 }
 
+/**
+ * Converts the input schema into an object with column names as keys and descriptions as values.
+ * This version includes casting as well
+ * @param {Array<Object>} inputSchema - An array representing the input schema with column details.
+ * @returns {Object} - An object with column names as keys and descriptions as values.
+ */
+
+function generateInsertColumnsStringWithAliasAndCasting(columns) {
+    return columns.map(ctx => {
+        let columnString = ctx.column_name;
+
+        // If a type cast is specified, add the cast to the column
+        if (ctx.hasOwnProperty("type_cast")) {
+            columnString = `CAST(${columnString} AS ${ctx.type_cast})`;
+        }
+
+        // If an alias is specified, add the alias to the column
+        if (ctx.hasOwnProperty("alias")) {
+            columnString = `${columnString} AS ${ctx.alias}`;
+        }
+
+        return columnString;
+    }).join(",\n\t\t");
+}
 
 module.exports = {
     manage_bool_in_SAP,
     removeLeadingZeros,
+    generateInsertColumnsStringWithAliasAndCasting,
     generateColumns,
     convertColumnsListToString,
     getColumnDescriptionObject,
