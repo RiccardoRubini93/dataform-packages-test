@@ -90,20 +90,43 @@ function generateColumns(inputSchema) {
     }, {});
 }
 
-
+/**
+ * Applies a retention policy to a given timestamp field.
+ * 
+ * @param {string} target_field - The timestamp field to apply the retention policy to.
+ * @param {number} retention - The number of years to retain the data.
+ * @returns {string} - SQL expression to enforce retention policy by comparing the field with the current date.
+ */
 function applyPolicyRetention(target_field, retention) {
     return `
     TIMESTAMP(${target_field}) > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL ${retention} YEAR))
   `;
 }
 
-
+/**
+ * Applies a time filter to a specified field within a time interval.
+ * 
+ * @param {string} target_field - The field to filter based on time.
+ * @param {number} delta - The interval (in days) to filter records by.
+ * @returns {string} - SQL expression to filter records based on the time range from the current date.
+ */
 function applyTimeFilter(target_field, delta) {
     return `
     ${target_field} BETWEEN CURRENT_DATE()-${delta} AND CURRENT_DATE()
   `;
 }
 
+/**
+ * Builds a SQL UNION query to combine multiple tables from the same schema.
+ * 
+ * @param {string} db - The database name.
+ * @param {string} schema - The schema name.
+ * @param {Array<string>} tables - A list of table names to include in the UNION.
+ * @param {Array<string>} fields_select - A list of fields to select from each table.
+ * @param {string} time_filter_col - The column used for filtering records based on time.
+ * @param {number} time_interval - The time interval (in days) used for filtering.
+ * @returns {string} - SQL UNION query combining the selected tables with optional time filters.
+ */
 function buildUnionQuery(db, schema, tables, fields_select, time_filter_col, time_interval) {
     // Initialize an empty array to hold the individual SELECT statements
     let selectStatements = [];
@@ -128,7 +151,13 @@ function buildUnionQuery(db, schema, tables, fields_select, time_filter_col, tim
     return unionQuery;
 }
 
-
+/**
+ * Generates a SQL CASE statement to categorize age into intervals.
+ * 
+ * @param {string} age_field - The field representing age.
+ * @param {Array<number>} intervals - An array of age intervals.
+ * @returns {string} - SQL CASE statement categorizing the age field into the provided intervals.
+ */
 function generateAgeCaseStatement(age_field, intervals) {
     let sqlCaseStatement = "CASE\n";
 
@@ -146,6 +175,13 @@ function generateAgeCaseStatement(age_field, intervals) {
     return sqlCaseStatement;
 }
 
+/**
+ * Generates a SQL CASE statement to categorize client tenure in years.
+ * 
+ * @param {string} subr_date - The field representing the subscription start date.
+ * @param {Array<number>} intervals - An array of tenure intervals (in years).
+ * @returns {string} - SQL CASE statement categorizing the client tenure into the provided intervals.
+ */
 function getClientTenure(subr_date, intervals) {
 
     let sqlCaseStatement = "CASE\n";
@@ -165,6 +201,14 @@ function getClientTenure(subr_date, intervals) {
 
 }
 
+/**
+ * Generates a SQL CASE statement to map a field to a platform based on a predefined list.
+ * 
+ * @param {string} field - The field to be mapped.
+ * @param {Array<Object>} mappingList - A list of objects containing platform mappings.
+ *   Each object should have a 'list' of possible values and a 'value' representing the platform.
+ * @returns {string} - SQL CASE statement mapping the field to the platform values.
+ */
 function getPlatformMapping(field, mappingList) {
     let sqlCaseStatement = "CASE\n";
 
