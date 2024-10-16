@@ -91,6 +91,103 @@ function generateColumns(inputSchema) {
 }
 
 
+function applyPolicyRetention(target_field, retention) {
+    return `
+    TIMESTAMP(${target_field}) > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL ${retention} YEAR))
+  `;
+}
+
+
+function applyTimeFilter(target_field, delta) {
+    return `
+    ${target_field} BETWEEN CURRENT_DATE()-${delta} AND CURRENT_DATE()
+  `;
+}
+
+function buildUnionQuery(db, schema, tables, fields_select, time_filter_col, time_interval) {
+    // Initialize an empty array to hold the individual SELECT statements
+    let selectStatements = [];
+    let fieldsToSelect = fields_select.join(", ");
+    // Loop through the table names and build each SELECT statement
+    for (let i = 0; i < tables.length; i++) {
+        let table = tables[i];
+        let selectStatement = `SELECT ${fieldsToSelect} FROM ${db}.${schema}.${table} WHERE `;
+
+        // Apply the time filter if timeColumn, startTime, and endTime are provided
+        if (time_filter_col && time_interval) {
+            selectStatement += `${applyTimeFilter(time_filter_col,time_interval)}`;
+        }
+
+        selectStatements.push(selectStatement);
+
+    }
+
+    // Join all SELECT statements with UNION ALL
+    let unionQuery = selectStatements.join(" UNION ALL\n");
+
+    return unionQuery;
+}
+
+
+function generateAgeCaseStatement(age_field, intervals) {
+    let sqlCaseStatement = "CASE\n";
+
+    for (let i = 0; i < intervals.length - 1; i++) {
+        const minAge = intervals[i];
+        const maxAge = intervals[i + 1] - 1;
+        sqlCaseStatement += `  WHEN ${age_field} BETWEEN ${minAge} AND ${maxAge} THEN '[${minAge}-${maxAge}]'\n`;
+    }
+
+    // For the last interval 
+    const lastMinAge = intervals[intervals.length - 1];
+    sqlCaseStatement += `  ELSE '[${lastMinAge}+]'`;
+
+    sqlCaseStatement += "\nEND";
+    return sqlCaseStatement;
+}
+
+function getClientTenure(subr_date, intervals) {
+
+    let sqlCaseStatement = "CASE\n";
+
+    for (let i = 0; i < intervals.length - 1; i++) {
+        const min = intervals[i];
+        const max = intervals[i + 1] - 1;
+        sqlCaseStatement += `  WHEN DATE_DIFF(CURRENT_DATE(),${subr_date},YEAR) = ${max} THEN '${intervals[i]}'\n`;
+    }
+
+    // For the last interval 
+    const last = intervals[intervals.length - 1];
+    sqlCaseStatement += `  ELSE '${last}+'`;
+
+    sqlCaseStatement += "\nEND";
+    return sqlCaseStatement;
+
+}
+
+function getPlatformMapping(field, mappingList) {
+    let sqlCaseStatement = "CASE\n";
+
+    // Loop through each mapping object
+    for (let i = 0; i < mappingList.length; i++) {
+        const {
+            list,
+            value
+        } = mappingList[i];
+        const values = list.map(item => `'${item}'`).join(', '); // Convert the list to SQL format
+        sqlCaseStatement += `  WHEN ${field} IN (${values}) THEN '${value}'\n`;
+    }
+
+    // Default ELSE case
+    sqlCaseStatement += "  ELSE 'not_specified'\n";
+
+    sqlCaseStatement += "END";
+
+    return sqlCaseStatement
+
+}
+
+
 module.exports = {
     manage_bool_in_SAP,
     removeLeadingZeros,
@@ -98,5 +195,11 @@ module.exports = {
     convertColumnsListToString,
     getColumnDescriptionObject,
     generateInsertColumnsString,
-    generateInsertColumnsStringWithAlias
+    generateInsertColumnsStringWithAlias,
+    applyPolicyRetention,
+    applyTimeFilter,
+    buildUnionQuery,
+    generateAgeCaseStatement,
+    getClientTenure,
+    getPlatformMapping
     }
